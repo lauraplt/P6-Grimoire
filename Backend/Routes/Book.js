@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../Middleware/auth');
+const auth = require('../Middleware/Auth');
 const bookCtrl = require('../Controllers/Book');
 const { upload, optimizeImage } = require('../Middleware/Multer-config');
 
