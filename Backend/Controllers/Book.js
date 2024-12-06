@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 
 exports.getAllBooks = (req, res, next) => {
-    Book.find()
+    Book.find().select('title author imageUrl ratings averageRating')
         .then(books => res.status(200).json(books))
         .catch(error => res.status(400).json({ error }));
 }
@@ -18,18 +18,20 @@ exports.createBook = (req, res, next) => {
     const bookObject = JSON.parse(req.body.book);
     delete bookObject._id;
     delete bookObject._userId;
-    delete bookObject.averageRating;
 
-    bookObject.ratings = [];
+    // Vérifiez si une note initiale est fournie
+    const initialRating = bookObject.ratings && bookObject.ratings.length > 0 ? bookObject.ratings[0].grade : null;
 
     const book = new Book({
         ...bookObject,
         userId: req.auth.userId,
-        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`
+        imageUrl: `${req.protocol}://${req.get('host')}/images/${req.file.filename}`,
+        ratings: initialRating ? [{ userId: req.auth.userId, grade: initialRating }] : [],
+        averageRating: initialRating || 0
     });
 
     book.save()
-        .then(() => res.status(201).json({ message: 'Livre Ajouteé avec success !' }))
+        .then(() => res.status(201).json({ message: 'Livre Ajouté avec succès !' }))
         .catch(error => res.status(400).json({ error }));
 };
 

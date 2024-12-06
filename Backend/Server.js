@@ -1,5 +1,10 @@
 const http = require('http');
 const app = require('./App');
+const fs = require('fs');
+const dir = './images';
+if (!fs.existsSync(dir)){
+    fs.mkdirSync(dir, { recursive: true });
+}
 
 
 const normalizePort = val => {
@@ -13,7 +18,7 @@ const normalizePort = val => {
   }
   return false;
 };
-const port = normalizePort(process.env.PORT || '3007');
+const port = normalizePort(process.env.PORT || '4000');
 app.set('port', port);
 
 const errorHandler = error => {

@@ -2,12 +2,11 @@ const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 const sharp = require('sharp');
-const webp = require('webp-converter');
 
-// Disablle sharp cache //
+// Disable sharp cache
 sharp.cache(false);
 
-// Definition of MIMI types //
+// Definition of MIME types
 const MIME_TYPES = {
     'image/jpg': 'jpg',
     'image/jpeg': 'jpg',
@@ -15,10 +14,16 @@ const MIME_TYPES = {
     'image/webp': 'webp'
 };
 
-// Configuring multer to manage image storage //
+// Ensure the 'images' directory exists
+const imagesDir = path.join(__dirname, '..', 'images');
+if (!fs.existsSync(imagesDir)){
+    fs.mkdirSync(imagesDir, { recursive: true });
+}
+
+// Configuring multer to manage image storage
 const storage = multer.diskStorage({
     destination: (req, file, callback) => {
-        callback(null, 'images');
+        callback(null, imagesDir);
     },
     filename: (req, file, callback) => {
         const name = file.originalname.split(' ').join('_');
@@ -27,7 +32,7 @@ const storage = multer.diskStorage({
     }
 });
 
-// Middleware : optimization images
+// Middleware : optimize images
 const optimizeImage = async (req, res, next) => {
     if (!req.file) return next();
 
@@ -42,7 +47,7 @@ const optimizeImage = async (req, res, next) => {
             optimizedImagePath = originalImagePath;
         } else {
             optimizedImageName = `optimized_${path.basename(originalImagePath, ext)}.webp`;
-            optimizedImagePath = path.join('images', optimizedImageName);
+            optimizedImagePath = path.join(imagesDir, optimizedImageName);
 
             await sharp(originalImagePath)
                 .resize({ fit: 'contain' })
@@ -52,7 +57,6 @@ const optimizeImage = async (req, res, next) => {
             fs.unlink(originalImagePath, (error) => {
                 if (error) {
                     console.error("Impossible de supprimer l'image originale :", error);
-                    return next(error);
                 }
             });
         }
@@ -60,6 +64,7 @@ const optimizeImage = async (req, res, next) => {
         req.file.filename = optimizedImageName;
         next();
     } catch (error) {
+        console.error("Erreur lors de l'optimisation de l'image :", error);
         return next(error);
     }
 };
