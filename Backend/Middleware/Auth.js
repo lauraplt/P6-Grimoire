@@ -1,17 +1,31 @@
-const jwt = require("jsonwebtoken")
-const dotenv = require("dotenv")
-dotenv.config()
+const jwt = require("jsonwebtoken");
+const dotenv = require("dotenv");
+dotenv.config();
 
-exports.auth = async (req, res, next) => {
+exports.authenticateUser = async (req, res, next) => {
     try {
-        const token = req.headers.authorization.split(" ")[1]
-        const decodedToken = jwt.verify(token, process.env.JWT_SECRET)
-        const userId = decodedToken.userId
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: "Authorization header missing" });
+        }
+
+        const token = authHeader.split(" ")[1];
+        if (!token) {
+            return res.status(401).json({ error: "Token missing in Authorization header" });
+        }
+
+        const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decodedToken.userId;
+        
         req.auth = {
             userId: userId,
-        }
-        next()
+        };
+        
+        next();
     } catch (error) {
-        res.status(401).json({ error })
+        if (error instanceof jwt.JsonWebTokenError) {
+            return res.status(401).json({ error: "Invalid token" });
+        }
+        res.status(500).json({ error: "Internal server error during authentication" });
     }
-}
+};
