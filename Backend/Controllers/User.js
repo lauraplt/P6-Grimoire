@@ -4,44 +4,80 @@ const jwt = require('jsonwebtoken');
 const dotenv = require('dotenv');
 dotenv.config();
 
-// POST: Sign Up
+// Controller for user signup
+exports.signup = async (req, res, next) => {
+  try {
+    // Vérifier si l'email est déjà utilisé
+    const existingUser = await User.findOne({ email: req.body.email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: true,
+        message: 'Un compte existe déjà avec cet email',
+      });
+    }
 
-exports.signup = (req, res, next) => {
-    bcrypt.hash(req.body.password, 10)
-        .then(hash => {
-            const user = new User({
-                email: req.body.email,
-                password: hash
-            });
-            user.save()
-                .then(() => res.status(201).json({ message: 'Utilisateur créé' }))
-                .catch(error => res.status(400).json({ error }));
-        })
+    // Hash du mot de passe
+    const hashedPassword = await bcrypt.hash(req.body.password, 10);
+    const user = new User({
+      email: req.body.email,
+      password: hashedPassword,
+    });
+    await user.save();
 
-        .catch(error => res.status(500).json({ error }));
+    // Réponse en cas de succès
+    res.status(201).json({
+      message: 'Compte créé avec succès',
+      error: false,
+    });
+  } catch (error) {
+    // En cas d'erreur lors de la création du compte
+    console.error(error); // Optionnel pour débogage
+    res.status(500).json({
+      error: true,
+      message: 'Erreur lors de la création du compte',
+      details: error.message || 'Erreur inconnue',
+    });
+  }
 };
 
-exports.login = (req, res, next) => {
-    User.findOne({ email: req.body.email })
-        .then(user => {
-            if (!user) {
-                return res.status(401).json({ message: 'Paire email/mot de passe incorrecte' });
-            }
-            bcrypt.compare(req.body.password, user.password)
-                .then(valid => {
-                    if (!valid) {
-                        return res.status(401).json({ message: 'Paire email/mot de passe incorrecte' });
-                    }
-                    res.status(200).json({
-                        userId: user._id,
-                        token: jwt.sign(
-                            { userId: user._id },
-                            process.env.JWT_SECRET,
-                            { expiresIn: '24h' }
-                        )
-                    });
-                })
-                .catch(error => res.status(500).json({ error }));
-        })
-        .catch(error => res.status(500).json({ error }));
+// Controller for user login
+exports.login = async (req, res, next) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (!user) {
+      return res.status(401).json({
+        error: true,
+        message: 'Aucun compte associé à cet email',
+      });
+    }
+
+    const validPassword = await bcrypt.compare(req.body.password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({
+        error: true,
+        message: 'Mot de passe incorrect',
+      });
+    }
+
+    // Générer le token JWT
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
+      expiresIn: '24h',
+    });
+
+    // Réponse en cas de succès
+    res.status(200).json({
+      userId: user._id,
+      token,
+      message: 'Connexion réussie',
+      error: false,
+    });
+  } catch (error) {
+    // En cas d'erreur lors de la connexion
+    console.error(error); // Optionnel pour débogage
+    res.status(500).json({
+      error: true,
+      message: 'Erreur de connexion',
+      details: error.message || 'Erreur inconnue',
+    });
+  }
 };
