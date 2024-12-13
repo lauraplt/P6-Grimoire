@@ -9,7 +9,7 @@ exports.getAllBooks = (req, res, next) => {
 
 exports.getOneBook = (req, res, next) => {
     Book.findOne({ _id: req.params.id })
-        .select('title author imageUrl ratings averageRating userId')
+        .select('title author imageUrl ratings averageRating userId genre year')
         .then(book => {
             if (book) {
                 const bookData = book.toObject();
@@ -70,11 +70,13 @@ exports.rateBook = (req, res, next) => {
             const userRatingIndex = book.ratings.findIndex(rating => rating.userId === req.auth.userId);
 
             if (userRatingIndex !== -1) {
-                return res.status(400).json({ message: "Vous avez déjà noté ce livre" });
+                book.ratings[userRatingIndex].grade = Math.max(0, Math.min(5, req.body.rating));
+            } else {
+                book.ratings.push({ 
+                    grade: Math.max(0, Math.min(5, req.body.rating)), 
+                    userId: req.auth.userId 
+                });
             }
-
-            const grade = Math.max(0, Math.min(5, req.body.rating));
-            book.ratings.push({ grade: grade, userId: req.auth.userId });
 
             const sumTotal = book.ratings.reduce((acc, rating) => acc + rating.grade, 0);
             book.averageRating = Math.round((sumTotal / book.ratings.length) * 100) / 100;
@@ -82,13 +84,14 @@ exports.rateBook = (req, res, next) => {
             return book.save();
         })
         .then(updatedBook => {
-            return Book.findById(updatedBook._id).select('title author imageUrl ratings averageRating userId');
+            return Book.findById(updatedBook._id)
+                .select('title author imageUrl ratings averageRating userId genre year');
         })
         .then(book => {
             const bookData = book.toObject();
             bookData.userConnected = true;
             bookData.currentUserId = req.auth.userId;
-            bookData.userRated = true;
+            bookData.userRated = book.ratings.some(rating => rating.userId === req.auth.userId);
             res.status(200).json(bookData);
         })
         .catch(error => res.status(400).json({ error }));

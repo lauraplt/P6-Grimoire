@@ -1,7 +1,7 @@
 const express = require("express");
 const multer = require("../Middleware/Multer-config");
 const router = express.Router();
-const { authenticateUser } = require("../Middleware/Auth"); // Adjust this path as needed
+const { authenticateUser } = require("../Middleware/Auth");
 const bookCtrl = require("../Controllers/Book");
 
 router.get("/", bookCtrl.getAllBooks);
